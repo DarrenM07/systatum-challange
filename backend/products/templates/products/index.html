@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products API Sandbox</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 32px;
+            background: #f8f9fb;
+            color: #1f2933;
+        }
+        h1 { margin-bottom: 8px; }
+        p { max-width: 720px; }
+        .card {
+            background: #fff;
+            border: 1px solid #d8dde3;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            font-family: Consolas, "Courier New", monospace;
+            padding: 10px;
+            border: 1px solid #cbd2d9;
+            border-radius: 6px;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #cbd2d9;
+            border-radius: 6px;
+            width: 180px;
+        }
+        button {
+            padding: 8px 12px;
+            margin-right: 8px;
+            margin-top: 8px;
+            border: 1px solid #2563eb;
+            background: #2563eb;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button.secondary {
+            background: #fff;
+            color: #2563eb;
+        }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        pre {
+            background: #0b1724;
+            color: #e5e7eb;
+            padding: 16px;
+            border-radius: 8px;
+            overflow: auto;
+        }
+        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .note { font-size: 14px; color: #52606d; }
+    </style>
+</head>
+<body>
+    <h1>Products API</h1>
+    <p class="note">Use this page to exercise the API. Requests go to the same origin (no auth). PUT updates only the keys you send inside <code>fields</code>.</p>
+
+    <div class="card">
+        <h3>Payload</h3>
+        <textarea id="fieldsInput">{ "name": "Ultramie Goreng", "price": 25000 }</textarea>
+        <div class="note">Paste a JSON object for <code>fields</code>. Example: { "name": "Ultramie Goreng", "price": 25000 }</div>
+    </div>
+
+    <div class="card">
+        <h3>Actions</h3>
+        <div class="row">
+            <button id="createBtn">Create</button>
+            <button id="listBtn" class="secondary">List All</button>
+        </div>
+        <div class="row" style="margin-top: 12px;">
+            <input id="productIdInput" type="number" placeholder="Product ID" min="1">
+            <button id="getBtn" class="secondary">Get</button>
+            <button id="updateBtn">Update</button>
+            <button id="deleteBtn" class="secondary">Delete</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Response</h3>
+        <pre id="responseBox">Awaiting request...</pre>
+    </div>
+
+    <script>
+        const responseBox = document.getElementById("responseBox");
+
+        const showResponse = (payload) => {
+            if (payload === null || payload === undefined) {
+                responseBox.textContent = "No content";
+                return;
+            }
+            responseBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+        };
+
+        const parseFields = () => {
+            const raw = document.getElementById("fieldsInput").value.trim();
+            if (!raw) {
+                alert("Please provide a JSON object in the payload box.");
+                return null;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+                    alert("Payload must be a JSON object.");
+                    return null;
+                }
+                return parsed;
+            } catch (err) {
+                alert("Invalid JSON: " + err.message);
+                return null;
+            }
+        };
+
+        const getProductId = () => {
+            const raw = document.getElementById("productIdInput").value;
+            const id = parseInt(raw, 10);
+            if (Number.isNaN(id) || id <= 0) {
+                alert("Please enter a valid product ID.");
+                return null;
+            }
+            return id;
+        };
+
+        const handleFetch = async (url, options = {}) => {
+            try {
+                const res = await fetch(url, options);
+                if (res.status === 204) {
+                    showResponse("Deleted (204 No Content)");
+                    return;
+                }
+                const data = await res.json();
+                showResponse(data);
+            } catch (err) {
+                showResponse(`Error: ${err.message}`);
+            }
+        };
+
+        document.getElementById("createBtn").addEventListener("click", async () => {
+            const fields = parseFields();
+            if (!fields) return;
+            await handleFetch("/api/products/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fields }),
+            });
+        });
+
+        document.getElementById("listBtn").addEventListener("click", async () => {
+            await handleFetch("/api/products/");
+        });
+
+        document.getElementById("getBtn").addEventListener("click", async () => {
+            const id = getProductId();
+            if (!id) return;
+            await handleFetch(`/api/products/${id}/`);
+        });
+
+        document.getElementById("updateBtn").addEventListener("click", async () => {
+            const id = getProductId();
+            if (!id) return;
+            const fields = parseFields();
+            if (!fields) return;
+            await handleFetch(`/api/products/${id}/`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fields }),
+            });
+        });
+
+        document.getElementById("deleteBtn").addEventListener("click", async () => {
+            const id = getProductId();
+            if (!id) return;
+            await handleFetch(`/api/products/${id}/`, { method: "DELETE" });
+        });
+    </script>
+</body>
+</html>
